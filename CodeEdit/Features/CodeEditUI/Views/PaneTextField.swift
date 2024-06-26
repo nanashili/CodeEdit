@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Combine
-import Introspect
 
 struct PaneTextField<LeadingAccessories: View, TrailingAccessories: View>: View {
     @Environment(\.colorScheme)
@@ -119,7 +118,7 @@ struct PaneTextField<LeadingAccessories: View, TrailingAccessories: View>: View 
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(isFocused || !text.isEmpty || hasValue ? .tertiary : .quaternary, lineWidth: 1.25)
-                .cornerRadius(6)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
                 .disabled(true)
                 .edgesIgnoringSafeArea(.all)
         )

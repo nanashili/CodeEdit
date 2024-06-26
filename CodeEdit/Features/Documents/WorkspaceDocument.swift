@@ -5,10 +5,11 @@
 //  Created by Pavel Kasila on 17.03.22.
 //
 
-import Foundation
 import AppKit
 import SwiftUI
 import Combine
+import Foundation
+import LanguageServerProtocol
 
 @objc(WorkspaceDocument)
 final class WorkspaceDocument: NSDocument, ObservableObject, NSToolbarDelegate {
@@ -38,6 +39,8 @@ final class WorkspaceDocument: NSDocument, ObservableObject, NSToolbarDelegate {
     var listenerModel: WorkspaceNotificationModel = .init()
     var sourceControlManager: SourceControlManager?
 
+    var taskNotificationHandler: TaskNotificationHandler = TaskNotificationHandler()
+
     private var cancellables = Set<AnyCancellable>()
 
     deinit {
@@ -63,7 +66,7 @@ final class WorkspaceDocument: NSDocument, ObservableObject, NSToolbarDelegate {
         ".DS_Store"
     ]
 
-    override class var autosavesInPlace: Bool {
+    override static var autosavesInPlace: Bool {
         false
     }
 
@@ -78,18 +81,21 @@ final class WorkspaceDocument: NSDocument, ObservableObject, NSToolbarDelegate {
             backing: .buffered,
             defer: false
         )
+        // Note For anyone hoping to switch back to a Root-SwiftUI window:
+        // See Commit 0200c87 for more details and to see what was previously here.
+        // -----
         // Setting the "min size" like this is hacky, but SwiftUI overrides the contentRect and
         // any of the built-in window size functions & autosave stuff. So we have to set it like this.
         // SwiftUI also ignores this value, so it just manages to set the initial window size. *Hopefully* this
         // is fixed in the future.
+        // ----
         if let rectString = getFromWorkspaceState(.workspaceWindowSize) as? String {
-            window.minSize = NSRectFromString(rectString).size
-        } else {
-            window.minSize = .init(width: 1400, height: 900)
+            window.setContentSize(NSRectFromString(rectString).size)
         }
         let windowController = CodeEditWindowController(
             window: window,
-            workspace: self
+            workspace: self,
+            taskNotificationHandler: taskNotificationHandler
         )
 
         if let rectString = getFromWorkspaceState(.workspaceWindowSize) as? String {
@@ -110,6 +116,7 @@ final class WorkspaceDocument: NSDocument, ObservableObject, NSToolbarDelegate {
             workspaceURL: url,
             editorManager: editorManager
         )
+
         self.workspaceFileManager = .init(
             folderUrl: url,
             ignoredFilesAndFolders: Set(ignoredFilesAndDirectory),
