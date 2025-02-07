@@ -19,6 +19,9 @@ struct WorkspaceView: View {
     @AppSettings(\.theme.matchAppearance)
     var matchAppearance
 
+    @AppSettings(\.sourceControl.general.sourceControlIsEnabled)
+    var sourceControlIsEnabled
+
     @EnvironmentObject private var workspace: WorkspaceDocument
     @EnvironmentObject private var editorManager: EditorManager
     @EnvironmentObject private var utilityAreaViewModel: UtilityAreaViewModel
@@ -79,6 +82,7 @@ struct WorkspaceView: View {
                                         }
                                 }
                             }
+                            .accessibilityHidden(true)
                     }
                     .edgesIgnoringSafeArea(.top)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -97,6 +101,7 @@ struct WorkspaceView: View {
                             }
                             .offset(y: utilityAreaViewModel.isMaximized ? 0 : editorsHeight - statusbarHeight)
                         }
+                        .accessibilityElement(children: .contain)
                     }
                     .onChange(of: focusedEditor) { newValue in
                         /// update active tab group only if the new one is not the same with it.
@@ -128,6 +133,15 @@ struct WorkspaceView: View {
                             themeModel.selectedTheme = newValue == .dark
                             ? themeModel.selectedDarkTheme
                             : themeModel.selectedLightTheme
+                        }
+                    }
+                    .onChange(of: sourceControlIsEnabled) { newValue in
+                        if newValue {
+                            Task {
+                                await sourceControlManager.refreshCurrentBranch()
+                            }
+                        } else {
+                            sourceControlManager.currentBranch = nil
                         }
                     }
                     .onChange(of: focusedEditor) { newValue in

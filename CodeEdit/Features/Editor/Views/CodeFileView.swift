@@ -56,10 +56,9 @@ struct CodeFileView: View {
 
     init(codeFile: CodeFileDocument, textViewCoordinators: [TextViewCoordinator] = [], isEditable: Bool = true) {
         self._codeFile = .init(wrappedValue: codeFile)
-        self.textViewCoordinators = textViewCoordinators + [
-            codeFile.contentCoordinator,
-            codeFile.languageServerCoordinator
-        ]
+        self.textViewCoordinators = textViewCoordinators
+            + [codeFile.contentCoordinator]
+            + [codeFile.lspCoordinator].compactMap({ $0 })
         self.isEditable = isEditable
 
         if let openOptions = codeFile.openOptions {
@@ -80,11 +79,10 @@ struct CodeFileView: View {
             .textUpdatePublisher
             .debounce(for: 1.0, scheduler: DispatchQueue.main)
             .sink { _ in
+                // updateChangeCount is automatically managed by autosave(), so no manual call is necessary
                 codeFile.autosave(withImplicitCancellability: false) { error in
                     if let error {
                         CodeFileDocument.logger.error("Failed to autosave document, error: \(error)")
-                    } else {
-                        codeFile.updateChangeCount(.changeCleared)
                     }
                 }
             }
@@ -139,7 +137,6 @@ struct CodeFileView: View {
             undoManager: undoManager,
             coordinators: textViewCoordinators
         )
-
         .id(codeFile.fileURL)
         .background {
             if colorScheme == .dark {

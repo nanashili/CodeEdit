@@ -12,6 +12,7 @@ import Combine
 struct ProjectNavigatorOutlineView: NSViewControllerRepresentable {
 
     @EnvironmentObject var workspace: WorkspaceDocument
+    @EnvironmentObject var editorManager: EditorManager
 
     @StateObject var prefs: Settings = .shared
 
@@ -21,6 +22,7 @@ struct ProjectNavigatorOutlineView: NSViewControllerRepresentable {
         let controller = ProjectNavigatorViewController()
         controller.workspace = workspace
         controller.iconColor = prefs.preferences.general.fileIconStyle
+        controller.editor = editorManager.activeEditor
         workspace.workspaceFileManager?.addObserver(context.coordinator)
 
         context.coordinator.controller = controller
@@ -73,10 +75,17 @@ struct ProjectNavigatorOutlineView: NSViewControllerRepresentable {
 
         func fileManagerUpdated(updatedItems: Set<CEWorkspaceFile>) {
             guard let outlineView = controller?.outlineView else { return }
+            let selectedRows = outlineView.selectedRowIndexes.compactMap({ outlineView.item(atRow: $0) })
 
             for item in updatedItems {
                 outlineView.reloadItem(item, reloadChildren: true)
             }
+
+            // Restore selected items where the files still exist.
+            let selectedIndexes = selectedRows.compactMap({ outlineView.row(forItem: $0) }).filter({ $0 >= 0 })
+            controller?.shouldSendSelectionUpdate = false
+            outlineView.selectRowIndexes(IndexSet(selectedIndexes), byExtendingSelection: false)
+            controller?.shouldSendSelectionUpdate = true
         }
 
         deinit {

@@ -19,36 +19,36 @@ extension CEWorkspaceFileManager {
             var files: Set<CEWorkspaceFile> = []
             for event in events {
                 // Event returns file/folder that was changed, but in tree we need to update it's parent
-                let parentUrl = "/" + event.path.split(separator: "/").dropLast().joined(separator: "/")
-                // Find all folders pointing to the parent's file url.
-                let fileItems = self.flattenedFileItems.filter({
-                    $0.value.resolvedURL.path == parentUrl
-                }).map { $0.value }
+                guard let parentUrl = URL(string: event.path, relativeTo: self.folderUrl)?.deletingLastPathComponent(),
+                      let parentFileItem = self.flattenedFileItems[parentUrl.path] else {
+                    continue
+                }
 
                 switch event.eventType {
                 case .changeInDirectory, .itemChangedOwner, .itemModified:
                     // Can be ignored for now, these I think not related to tree changes
                     continue
                 case .rootChanged:
-                    // TODO: Handle workspace root changing.
+                    // TODO: #1880 - Handle workspace root changing.
                     continue
                 case .itemCreated, .itemCloned, .itemRemoved, .itemRenamed:
-                    for fileItem in fileItems {
-                        do {
-                            try self.rebuildFiles(fromItem: fileItem)
-                        } catch {
-                            // swiftlint:disable:next line_length
-                            self.logger.error("Failed to rebuild files for event: \(event.eventType.rawValue), path: \(event.path, privacy: .sensitive)")
-                        }
-                        files.insert(fileItem)
+                    do {
+                        try self.rebuildFiles(fromItem: parentFileItem)
+                    } catch {
+                        // swiftlint:disable:next line_length
+                        self.logger.error("Failed to rebuild files for event: \(event.eventType.rawValue), path: \(event.path, privacy: .sensitive)")
                     }
+                    files.insert(parentFileItem)
                 }
             }
             if !files.isEmpty {
                 self.notifyObservers(updatedItems: files)
             }
 
-            self.handleGitEvents(events: events)
+            if Settings.shared.preferences.sourceControl.general.sourceControlIsEnabled &&
+                Settings.shared.preferences.sourceControl.general.refreshStatusLocally {
+                self.handleGitEvents(events: events)
+            }
         }
     }
 
