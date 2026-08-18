@@ -35,8 +35,6 @@ struct WorkspaceView: View {
     @State private var editorsHeight: CGFloat = 0
     @State private var drawerHeight: CGFloat = 0
 
-    private let statusbarHeight: CGFloat = 29
-
     private var keybindings: KeybindingManager =  .shared
 
     var body: some View {
@@ -87,7 +85,7 @@ struct WorkspaceView: View {
                     .task {
                         // Only refresh git data if source control is enabled
                         guard sourceControlIsEnabled else { return }
-                        
+
                         do {
                             try await sourceControlManager.refreshRemotes()
                             try await sourceControlManager.refreshStashEntries()
@@ -165,7 +163,7 @@ struct WorkspaceView: View {
             UtilityAreaView()
                 .frame(height: utilityAreaViewModel.isMaximized ? nil : drawerHeight)
                 .frame(maxHeight: utilityAreaViewModel.isMaximized ? .infinity : nil)
-                .padding(.top, utilityAreaViewModel.isMaximized ? statusbarHeight + 1 : 0)
+                .padding(.top, utilityAreaViewModel.isMaximized ? StatusBarView.height + 1 : 0)
                 .offset(y: utilityAreaViewModel.isMaximized ? 0 : editorsHeight + 1)
             VStack(spacing: 0) {
                 StatusBarView(proxy: proxy)
@@ -173,7 +171,7 @@ struct WorkspaceView: View {
                     PanelDivider()
                 }
             }
-            .offset(y: utilityAreaViewModel.isMaximized ? 0 : editorsHeight - statusbarHeight)
+            .offset(y: utilityAreaViewModel.isMaximized ? 0 : editorsHeight - StatusBarView.height)
         }
         .accessibilityElement(children: .contain)
     }
